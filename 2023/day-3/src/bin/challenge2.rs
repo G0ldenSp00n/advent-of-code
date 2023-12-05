@@ -2,7 +2,7 @@ struct EngineScheme {
     scheme: Vec<Vec<char>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 struct Region {
     row: usize,
     lower: usize,
@@ -84,44 +84,124 @@ impl EngineScheme {
         for char_index in region.lower..=region.upper {
             read_val += &self.scheme[region.row][char_index].to_string()[..];
         }
-        println!("{}", read_val);
         read_val.parse().unwrap()
     }
 
-    fn test_region(&self, region: &Region) -> bool {
+    fn read_region_string(&self, region: &Region) -> String {
+        let mut read_val: String = "".to_owned();
+        for char_index in region.lower_char_index()..=region.upper_char_index(self.scheme[0].len())
+        {
+            read_val += &self.scheme[region.row][char_index].to_string()[..];
+        }
+        read_val
+    }
+
+    fn find_gear_piece(&self, region: &Region) -> Option<Region> {
         let mut found_symbol = false;
         println!("Testing Region {} - {:?}", self.read_region(region), region);
         for row_index in region.lower_row()..=region.upper_row(self.scheme.len()) {
+            println!(
+                "{}",
+                self.read_region_string(&Region {
+                    row: row_index,
+                    lower: region.lower_char_index(),
+                    upper: region.upper_char_index(self.scheme[0].len())
+                })
+            );
             for char_index in
                 region.lower_char_index()..=region.upper_char_index(self.scheme[0].len())
             {
-                println!(
-                    "Testing Char [{}, {}]: {}",
-                    row_index, char_index, self.scheme[row_index][char_index]
-                );
                 let test_char = self.scheme[row_index][char_index];
-                if !test_char.is_digit(10) && test_char != '.' {
-                    found_symbol = true;
+                if test_char == '*' {
+                    return Some(Region {
+                        row: row_index,
+                        lower: char_index,
+                        upper: char_index,
+                    });
                 }
             }
         }
-        println!(
-            "Testing Region {} - {}",
-            self.read_region(region),
-            if found_symbol { "Succeeded" } else { "Failed" }
-        );
-        found_symbol
+        None
+    }
+
+    fn find_complete_number_region(&self, starting_digit: &Region) -> Option<Region> {
+        if self.scheme[starting_digit.row][starting_digit.lower].is_numeric() {
+            let lower = self.scheme[starting_digit.row]
+                .iter()
+                .enumerate()
+                .rev()
+                .skip_while(|(index, _char)| *index > starting_digit.lower)
+                .take_while(|(_index, char)| char.is_numeric())
+                .last()
+                .unwrap()
+                .0;
+            let upper = self.scheme[starting_digit.row]
+                .iter()
+                .enumerate()
+                .skip_while(|(index, _char)| *index < starting_digit.upper)
+                .take_while(|(_index, char)| char.is_numeric())
+                .last()
+                .unwrap()
+                .0;
+            return Some(Region {
+                row: starting_digit.row,
+                lower,
+                upper,
+            });
+        }
+        None
+    }
+
+    fn find_gear_piece_pairs(&self, gear_piece_region: &Region) -> Option<(Region, Region)> {
+        let mut first_region: Option<Region> = None;
+        for row_index in
+            gear_piece_region.lower_row()..=gear_piece_region.upper_row(self.scheme.len())
+        {
+            for char_index in gear_piece_region.lower_char_index()
+                ..=gear_piece_region.upper_char_index(self.scheme[0].len())
+            {
+                if self.scheme[row_index][char_index].is_numeric() {
+                    if let Some(number_region) = self.find_complete_number_region(&Region {
+                        row: row_index,
+                        lower: char_index,
+                        upper: char_index,
+                    }) {
+                        if let Some(first_region) = first_region {
+                            if first_region != number_region {
+                                return Some((first_region, number_region));
+                            }
+                        } else {
+                            first_region = Some(number_region);
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    fn calculate_great_ratio(&self, region: &Region) -> u32 {
+        if let Some(gear_piece) = self.find_gear_piece(region) {
+            if let Some((number_region_one, number_region_two)) =
+                self.find_gear_piece_pairs(&gear_piece)
+            {
+                if number_region_one == *region {
+                    return self.read_region(&number_region_one)
+                        * self.read_region(&number_region_two);
+                }
+            }
+        }
+        0
     }
 }
 
 fn main() {
-    let data = include_str!("./input1.txt");
+    let data = include_str!("./input2.txt");
     let scheme = EngineScheme::fill_scheme(data);
     let found_regions: u32 = scheme
         .find_regions()
         .iter()
-        .filter(|region| scheme.test_region(region))
-        .map(|region| scheme.read_region(region))
+        .map(|region| scheme.calculate_great_ratio(region))
         .sum();
     println!("{:?}", found_regions)
 }
