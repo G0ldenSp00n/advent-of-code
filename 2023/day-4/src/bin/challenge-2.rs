@@ -1,6 +1,6 @@
 use nom::{
     bytes::complete::tag,
-    character::complete::{self, line_ending, multispace0, multispace1},
+    character::complete::{self, line_ending, multispace0},
     multi::separated_list1,
     sequence::preceded,
     IResult,
@@ -15,7 +15,7 @@ struct LotteryCard {
 
 #[derive(Debug)]
 struct LotteryCardStack {
-    lottery_card: LotteryCard,
+    _lottery_card: LotteryCard,
     copies: u32,
 }
 
