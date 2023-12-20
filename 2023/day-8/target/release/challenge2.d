@@ -1,0 +1,1 @@
+/home/spoon/Developing/advent-of-code/2023/day-8/target/release/challenge2: /home/spoon/Developing/advent-of-code/2023/day-8/src/bin/challenge2.rs /home/spoon/Developing/advent-of-code/2023/day-8/src/bin/input2.txt
